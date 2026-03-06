@@ -79,26 +79,137 @@ mesh = SubResource("BoxMesh_box")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Box3" unique_id=1213524655]
 shape = SubResource("BoxShape3D_box")
 
+[node name="SpawnPoints" type="Node3D" parent="." unique_id=200000001]
+
+[node name="Spawn1" type="Marker3D" parent="SpawnPoints" unique_id=200000002]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, -5)
+
+[node name="Spawn2" type="Marker3D" parent="SpawnPoints" unique_id=200000003]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -5)
+
+[node name="Spawn3" type="Marker3D" parent="SpawnPoints" unique_id=200000004]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 5)
+
+[node name="Spawn4" type="Marker3D" parent="SpawnPoints" unique_id=200000005]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, 5)
+
+[node name="Spawn5" type="Marker3D" parent="SpawnPoints" unique_id=200000006]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="Spawn6" type="Marker3D" parent="SpawnPoints" unique_id=200000007]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 10)
+
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1865412955]
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer" unique_id=794084215]
+[node name="ConnectPanel" type="ColorRect" parent="CanvasLayer" unique_id=100000001]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.05, 0.1, 1)
+
+[node name="Center" type="CenterContainer" parent="CanvasLayer/ConnectPanel" unique_id=100000002]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Host" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1296916141]
-layout_mode = 2
-text = "host"
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer/ConnectPanel/Center" unique_id=100000003]
+custom_minimum_size = Vector2(300, 0)
+theme_override_constants/separation = 14
 
-[node name="Join" type="Button" parent="CanvasLayer/VBoxContainer" unique_id=1619597670]
+[node name="Title" type="Label" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=100000004]
 layout_mode = 2
-text = "join"
+text = "MULTIPLAYER GAME"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="Gap" type="Control" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=100000005]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 12)
+
+[node name="NameLabel" type="Label" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=100000018]
+layout_mode = 2
+text = "Your Name"
+
+[node name="NameInput" type="LineEdit" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=100000019]
+layout_mode = 2
+placeholder_text = "Enter your name"
+max_length = 24
+
+[node name="IPLabel" type="Label" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=100000006]
+layout_mode = 2
+text = "Server IP Address"
+
+[node name="IPInput" type="LineEdit" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=100000007]
+layout_mode = 2
+text = "127.0.0.1"
+placeholder_text = "e.g. 192.168.1.10"
+
+[node name="Host" type="Button" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=1296916141]
+layout_mode = 2
+text = "Host Game"
+
+[node name="Join" type="Button" parent="CanvasLayer/ConnectPanel/Center/VBox" unique_id=1619597670]
+layout_mode = 2
+text = "Join Game"
+
+[node name="LobbyPanel" type="ColorRect" parent="CanvasLayer" unique_id=100000010]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0.05, 0.1, 1)
+visible = false
+
+[node name="Center" type="CenterContainer" parent="CanvasLayer/LobbyPanel" unique_id=100000011]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer/LobbyPanel/Center" unique_id=100000012]
+custom_minimum_size = Vector2(300, 0)
+theme_override_constants/separation = 14
+
+[node name="Title" type="Label" parent="CanvasLayer/LobbyPanel/Center/VBox" unique_id=100000013]
+layout_mode = 2
+text = "LOBBY"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 28
+
+[node name="PlayersLabel" type="Label" parent="CanvasLayer/LobbyPanel/Center/VBox" unique_id=100000014]
+layout_mode = 2
+text = "Players:"
+theme_override_font_sizes/font_size = 16
+
+[node name="PlayerList" type="VBoxContainer" parent="CanvasLayer/LobbyPanel/Center/VBox" unique_id=100000015]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StartButton" type="Button" parent="CanvasLayer/LobbyPanel/Center/VBox" unique_id=100000016]
+layout_mode = 2
+text = "Start Game"
+visible = false
+
+[node name="ServerIPLabel" type="Label" parent="CanvasLayer/LobbyPanel/Center/VBox" unique_id=100000020]
+layout_mode = 2
+horizontal_alignment = 1
+visible = false
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer/LobbyPanel/Center/VBox" unique_id=100000017]
+layout_mode = 2
+text = "Waiting for host to start..."
+horizontal_alignment = 1
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1256509742]
 _spawnable_scenes = PackedStringArray("uid://bfps00000001")
 spawn_path = NodePath("..")
 
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/Host" to="." method="_on_host_pressed"]
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="CanvasLayer/ConnectPanel/Center/VBox/Host" to="." method="_on_host_pressed"]
+[connection signal="pressed" from="CanvasLayer/ConnectPanel/Center/VBox/Join" to="." method="_on_join_pressed"]
+[connection signal="pressed" from="CanvasLayer/LobbyPanel/Center/VBox/StartButton" to="." method="_on_start_pressed"]
