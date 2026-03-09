@@ -1,22 +1,30 @@
-# Multiplayer FPS Game
+# Hide the Body
 
-A 3D first-person shooter built in Godot 4, designed around a dedicated server running on a Raspberry Pi. Players connect to the server over the local network (or internet), compete in arena matches, and have their stats tracked in a MariaDB database.
+A cooperative multiplayer physics-based comedy game built in Godot 4. 2–6 players must secretly move and hide a ragdoll body before NPCs discover it — all while fighting clumsy controls and chaotic physics.
+
+The game server runs on a Raspberry Pi, and player stats (wins, rounds played) are stored in a MariaDB database so the leaderboard persists between sessions.
 
 ---
 
 ## Game Concept
 
-Fast-paced, arena-style multiplayer FPS. Players join a lobby, the host starts the match, and everyone spawns into the arena to compete. The server tracks wins and rounds played per player — so the leaderboard persists between sessions.
+You and your friends have accidentally caused a fatal incident. Panic sets in. You have only a few minutes to move the body somewhere believable before a neighbor, security guard, or passing pedestrian notices. The body is heavy, floppy, and completely uncooperative. So are your friends.
+
+The focus is on absurd cooperative chaos — limbs caught in doorways, bodies sliding down stairs, players arguing about the plan while the timer ticks down.
 
 ### Planned Features
 
-- [ ] Player shooting and health system
-- [ ] Round-based match flow (round start → combat → round end → next round)
-- [ ] Kill feed and scoreboard in-game
+- [ ] Ragdoll body physics (floppy, heavy, reacts to gravity and collisions)
+- [ ] Cooperative grab/drag/carry mechanics (multiple players required for heavy lifting)
+- [ ] NPC patrol routines with suspicion system
+- [ ] Suspicion triggers (running with body, loud noises, open doors, visible body parts)
+- [ ] Multiple maps: apartment, office, hotel, school, house party
+- [ ] Hiding spots: closets, dumpsters, lockers, containers, storage rooms
+- [ ] Round timer with escalating tension (more NPCs, investigators near the end)
+- [ ] Random events each round (different body spawn, NPC schedules, random incidents)
 - [ ] Persistent player stats (wins, rounds played) stored in MariaDB
-- [ ] Leaderboard screen showing top players
-- [ ] Player customization (name, possibly skin color)
-- [ ] Sound effects and visual feedback for hits/kills
+- [ ] Leaderboard screen
+- [ ] Stylized/cartoon visual style
 
 ---
 
@@ -26,7 +34,7 @@ Fast-paced, arena-style multiplayer FPS. Players join a lobby, the host starts t
 [ Player PC ]  ──────────────────────────────────────────┐
 [ Player PC ]  ──── ENet (port 6767) ────►  [ Raspberry Pi Server ]
 [ Player PC ]                                    │
-                                                 ▼
+[ Player PC ]                                    ▼
                                          [ MariaDB Database ]
                                          - players table
                                          - rounds table
@@ -72,22 +80,42 @@ CREATE TABLE stats (
 
 ## Gameplay
 
-| Action      | Key              |
-|-------------|------------------|
-| Move        | WASD             |
-| Look        | Mouse            |
-| Sprint      | Shift            |
-| Crouch      | Ctrl             |
-| Jump        | Space            |
-| Pause / ESC | Escape           |
+### Round Flow
 
-### Player Movement
+1. Players connect to the lobby on the Pi server
+2. A map and body spawn location are randomly selected
+3. The round timer starts — players must hide the body before time runs out
+4. NPCs patrol the map following daily routines
+5. If an NPC discovers the body → **round lost**
+6. If the body is hidden and players act normal until the timer ends → **round won**
+7. Stats (win/loss, round count) are written to the MariaDB database
 
-| State  | Speed     |
-|--------|-----------|
-| Walk   | 5 m/s     |
-| Sprint | 10 m/s    |
-| Crouch | 2.5 m/s   |
+### Controls (current prototype)
+
+| Action  | Key    |
+|---------|--------|
+| Move    | WASD   |
+| Look    | Mouse  |
+| Sprint  | Shift  |
+| Crouch  | Ctrl   |
+| Jump    | Space  |
+| Pause   | Escape |
+
+> Grab, carry, and drop mechanics are planned for the body interaction system.
+
+### NPC Suspicion System
+
+NPCs follow patrol routes but react to suspicious behaviour:
+
+| Trigger                        | Suspicion Level |
+|-------------------------------|-----------------|
+| Visible body / body part       | High            |
+| Player running while carrying  | Medium          |
+| Loud noise nearby              | Medium          |
+| Door left open                 | Low             |
+| Player staring at hiding spot  | Low             |
+
+When suspicion fills, the NPC will investigate. If they find the body, the round ends.
 
 ---
 
@@ -152,4 +180,11 @@ sudo systemctl start game-server
 
 ## Development Status
 
-This project is in early prototype stage. The multiplayer framework is functional (connect, lobby sync, player spawning and replication). Next steps are implementing shooting, health, round logic, and database integration.
+Early prototype stage. The multiplayer framework is functional — players can connect to the Pi server, join a lobby, and move around a shared 3D world with position replication.
+
+**Next steps:**
+- Ragdoll body physics and grab/carry mechanics
+- NPC patrol and suspicion system
+- First playable map with hiding spots
+- Round timer and win/lose logic
+- MariaDB integration for stat tracking
