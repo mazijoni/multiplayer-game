@@ -99,7 +99,7 @@ CREATE TABLE stats (
 | Sprint  | Shift  |
 | Crouch  | Ctrl   |
 | Jump    | Space  |
-| Pause   | Escape |
+| Quit    | Escape |
 
 > Grab, carry, and drop mechanics are planned for the body interaction system.
 
@@ -122,18 +122,16 @@ When suspicion fills, the NPC will investigate. If they find the body, the round
 ## Project Structure
 
 ```
-multiplayer game/
-├── assets/          # Audio and other assets
-├── autoload/        # Global singletons
-├── debug/           # Debug tools and overlays
-├── export/          # Exported builds (including headless Pi build)
+multiplayer-game/
+├── export/          # Web export build
 ├── scenes/
 │   ├── world.tscn   # Main game world and lobby
 │   └── player.tscn  # Player prefab
 ├── scripts/
 │   ├── world.gd     # Networking, lobby, and spawn logic
 │   └── player.gd    # First-person controller and replication
-├── textures/        # Texture assets
+├── export_presets.cfg
+├── icon.svg
 └── project.godot
 ```
 
