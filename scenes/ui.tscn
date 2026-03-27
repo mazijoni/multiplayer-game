@@ -1,0 +1,8 @@
+; UI — CanvasLayer only. ui_manager.gd builds all labels in _ready().
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui_manager.gd" id="1"]
+
+[node name="UI" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1")

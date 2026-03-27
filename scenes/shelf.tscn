@@ -1,0 +1,58 @@
+; Shelf unit -- 1.2 m wide x 1.6 m tall x 0.35 m deep placeholder.
+; Place with origin at y = 0.8 so the base sits flush with the floor.
+;
+; TapeContainer  -- all placed tapes are children here; they move with the shelf.
+; InteractionArea -- editor-visible Area3D on collision layer 3.
+;   Extends 0.15 m in front of the shelf face (local +Z = tape face).
+;   Resize InteractionShape in the Godot editor to tune interaction reach.
+; Label3D        -- genre label; billboard; reposition freely in editor.
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/shelf.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_shelf"]
+size = Vector3(1.2, 1.6, 0.35)
+
+[sub_resource type="StandardMaterial3D" id="Mat_shelf"]
+albedo_color = Color(0.60, 0.42, 0.22, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_shelf"]
+size = Vector3(1.2, 1.6, 0.35)
+
+[sub_resource type="BoxShape3D" id="Shape_interact"]
+size = Vector3(1.3, 1.8, 0.65)
+
+[node name="Shelf" type="StaticBody3D"]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_shelf")
+surface_material_override/0 = SubResource("Mat_shelf")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("Shape_shelf")
+
+; Placed tapes are reparented here so they travel with the shelf.
+[node name="TapeContainer" type="Node3D" parent="."]
+
+; Interaction zone -- on collision layer 3 (value 4) so the player raycast
+; (mask = 6) detects it as an Area3D without hitting the physics body.
+; Shift 0.15 m along local +Z so the zone protrudes past the shelf face.
+[node name="InteractionArea" type="Area3D" parent="."]
+collision_layer = 4
+collision_mask = 0
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.15)
+
+[node name="InteractionShape" type="CollisionShape3D" parent="InteractionArea"]
+shape = SubResource("Shape_interact")
+
+; Billboard label -- always faces camera; drag to reposition in editor.
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+text = "Empty"
+font_size = 28
+pixel_size = 0.009
+billboard = 1
+modulate = Color(1, 0.95, 0.3, 1)

@@ -1,0 +1,29 @@
+; VHS Tape — StaticBody3D root so RayCast3D can pick it up.
+; Visuals and collision match a real VHS cassette footprint (15×10×3 cm).
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/tape.gd" id="1"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1"]
+size = Vector3(0.15, 0.1, 0.03)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(0.15, 0.1, 0.03)
+
+[sub_resource type="SphereMesh" id="SphereMesh_1"]
+radius = 0.013
+height = 0.026
+
+[node name="Tape" type="StaticBody3D"]
+script = ExtResource("1")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_1")
+
+; Small sphere on top acts as the "rewound / not rewound" indicator LED.
+[node name="RewindIndicator" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.055, 0.063, 0)
+mesh = SubResource("SphereMesh_1")
