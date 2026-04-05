@@ -1,141 +1,157 @@
 extends CharacterBody3D
+class_name PlayerController
+## First-person player: movement, stamina, head-bob, camera sway, crouch.
 
-@export var speed:        float = 4.0
-@export var sprint_speed: float = 7.0
-@export var mouse_sens:   float = 0.002
+# ── Movement ──────────────────────────────────────────────────────────────────────────────
+@export var walk_speed    : float = 3.5
+@export var sprint_speed  : float = 7.5
+@export var crouch_speed  : float = 1.5
+@export var mouse_sens    : float = 0.002
+@export var move_accel    : float = 10.0
+@export var move_decel    : float = 14.0
 
-@onready var head:      Node3D    = $Head
-@onready var camera:    Camera3D  = $Head/Camera3D
-@onready var ray:       RayCast3D = $Head/Camera3D/RayCast3D
-@onready var carry:     Node      = $CarryInventory
-@onready var placement: Node      = $PlacementSystem
+# ── Stamina ───────────────────────────────────────────────────────────────────────────
+@export var max_stamina   : float = 100.0
+@export var stamina_drain : float = 22.0
+@export var stamina_regen : float = 12.0
 
-var _cur_interactable: Node   = null
-var _cur_prompt:       String = ""
+# ── Head bob ──────────────────────────────────────────────────────────────────────────
+@export var bob_freq_walk   : float = 2.0
+@export var bob_freq_sprint : float = 3.5
+@export var bob_amp_v       : float = 0.04
+@export var bob_amp_h       : float = 0.02
 
-const GRAVITY := 9.8
+# ── Crouch ────────────────────────────────────────────────────────────────────────────
+@export var stand_height    : float = 1.75
+@export var crouch_height   : float = 0.90
+@export var crouch_lerp_spd : float = 10.0
+
+# ── Node refs ───────────────────────────────────────────────────────────────────────────
+@onready var cam_pivot  : Node3D           = $CameraPivot
+@onready var cam_node   : Camera3D         = $CameraPivot/Camera3D
+@onready var col_shape  : CollisionShape3D = $CollisionShape3D
+
+var _gravity      : float   = ProjectSettings.get_setting("physics/3d/default_gravity")
+var _stamina      : float   = 100.0
+var _crouching    : bool    = false
+var _dead         : bool    = false
+var _bob_t        : float   = 0.0
+var _pivot_base_y : float   = 0.0
+var _mouse_delta  : Vector2 = Vector2.ZERO
+var _step_accum   : float   = 0.0
 
 func _ready() -> void:
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	add_to_group("player")
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_pivot_base_y = cam_pivot.position.y
+	var cap := col_shape.shape as CapsuleShape3D
+	if cap:
+		col_shape.position.y = cap.height * 0.5
 
-func _input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+func _unhandled_input(event: InputEvent) -> void:
+	if _dead:
+		return
+	if event is InputEventMouseMotion:
+		_mouse_delta = event.relative
 		rotate_y(-event.relative.x * mouse_sens)
-		head.rotate_x(-event.relative.y * mouse_sens)
-		head.rotation.x = clamp(head.rotation.x, -PI * 0.45, PI * 0.45)
+		cam_pivot.rotate_x(-event.relative.y * mouse_sens)
+		cam_pivot.rotation.x = clamp(cam_pivot.rotation.x, deg_to_rad(-85.0), deg_to_rad(85.0))
 	if event.is_action_pressed("ui_cancel"):
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	elif event is InputEventMouseButton and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _physics_process(delta: float) -> void:
-	_apply_gravity(delta)
-	_handle_move(delta)
-	if placement.active:
-		placement.update_preview(ray)
-		if Input.is_action_just_pressed("interact"):
-			placement.confirm()
-		elif Input.is_action_just_pressed("cancel_action"):
-			placement.cancel()
+	if _dead:
 		return
-	_update_interaction()
-	if Input.is_action_just_pressed("interact") and _cur_interactable != null:
-		_do_interact(_cur_interactable)
+	_apply_gravity(delta)
+	_update_crouch(delta)
+	_update_stamina(delta)
+	_update_movement(delta)
+	_update_head_bob(delta)
+	_update_sway(delta)
+	move_and_slide()
+	_tick_footstep(delta)
 
 func _apply_gravity(delta: float) -> void:
 	if not is_on_floor():
-		velocity.y -= GRAVITY * delta
+		velocity.y -= _gravity * delta
 
-func _handle_move(_delta: float) -> void:
-	var spd := sprint_speed if Input.is_action_pressed("sprint") else speed
-	var dir := Vector3.ZERO
-	var move_basis := global_transform.basis
-	if Input.is_action_pressed("move_forward"):  dir -= move_basis.z
-	if Input.is_action_pressed("move_back"):     dir += move_basis.z
-	if Input.is_action_pressed("move_left"):     dir -= move_basis.x
-	if Input.is_action_pressed("move_right"):    dir += move_basis.x
-	dir = dir.normalized()
-	velocity.x = dir.x * spd
-	velocity.z = dir.z * spd
-	move_and_slide()
+func _update_crouch(delta: float) -> void:
+	var target_h : float = crouch_height if Input.is_action_pressed("crouch") else stand_height
+	_crouching = (target_h == crouch_height)
+	var cap := col_shape.shape as CapsuleShape3D
+	if cap:
+		cap.height           = lerp(cap.height, target_h, crouch_lerp_spd * delta)
+		col_shape.position.y = cap.height * 0.5
+	var target_y := _pivot_base_y * (target_h / stand_height)
+	cam_pivot.position.y = lerp(cam_pivot.position.y, target_y, crouch_lerp_spd * delta)
 
-# ── Interaction scanning ──────────────────────────────────────────────────────
-# RayCast3D must have: collision_mask=6, collide_with_areas=true
-#   Layer 2 (value 2) = tape StaticBody3D
-#   Layer 3 (value 4) = interaction Area3D (shelves, counter, rewind)
-func _update_interaction() -> void:
-	_cur_interactable = null
-	_cur_prompt       = ""
-	if not ray.is_colliding():
-		_update_ui_prompt("")
+func _update_stamina(delta: float) -> void:
+	var h_spd     := Vector2(velocity.x, velocity.z).length()
+	var sprinting := Input.is_action_pressed("sprint") and not _crouching \
+					 and h_spd > 0.1 and _stamina > 0.0
+	if sprinting:
+		_stamina = max(0.0, _stamina - stamina_drain * delta)
+	else:
+		_stamina = min(max_stamina, _stamina + stamina_regen * delta)
+	GameManager.update_stamina(_stamina / max_stamina)
+
+func _update_movement(delta: float) -> void:
+	var xf       := global_transform
+	var move_dir := Vector3.ZERO
+	if Input.is_action_pressed("move_forward"): move_dir -= xf.basis.z
+	if Input.is_action_pressed("move_back"):    move_dir += xf.basis.z
+	if Input.is_action_pressed("move_left"):    move_dir -= xf.basis.x
+	if Input.is_action_pressed("move_right"):   move_dir += xf.basis.x
+	move_dir.y = 0.0
+	if move_dir.length_squared() > 0.0:
+		move_dir = move_dir.normalized()
+
+	var sprinting := Input.is_action_pressed("sprint") and not _crouching and _stamina > 0.0
+	var spd : float
+	if _crouching:
+		spd = crouch_speed
+	elif sprinting:
+		spd = sprint_speed
+	else:
+		spd = walk_speed
+
+	var target := move_dir * spd
+	var rate   := move_accel if move_dir.length_squared() > 0.0 else move_decel
+	velocity.x = lerp(velocity.x, target.x, rate * delta)
+	velocity.z = lerp(velocity.z, target.z, rate * delta)
+
+func _update_head_bob(delta: float) -> void:
+	var h_spd := Vector2(velocity.x, velocity.z).length()
+	if h_spd < 0.2:
+		_bob_t = 0.0
+		cam_node.position.y = lerp(cam_node.position.y, 0.0, 8.0 * delta)
+		cam_node.position.x = lerp(cam_node.position.x, 0.0, 8.0 * delta)
 		return
-	var col: Node = ray.get_collider()
-	if col == null:
-		return
+	var freq := bob_freq_sprint if h_spd > walk_speed + 0.5 else bob_freq_walk
+	_bob_t += delta * freq * TAU
+	cam_node.position.y = sin(_bob_t) * bob_amp_v
+	cam_node.position.x = sin(_bob_t * 0.5) * bob_amp_h
 
-	# Tape (StaticBody3D, layer 2)
-	if col.is_in_group("tape"):
-		if carry.is_full():
-			_set_prompt(null, "Inventory full (10/10)")
-		else:
-			_set_prompt(col, "[E]  Pick up " + col.tape_name)
-	# All other interactables (Area3D, layer 3)
-	elif col is Area3D:
-		var parent: Node = col.get_parent()
-		if parent != null and parent.is_in_group("shelf"):
-			if not carry.is_empty():
-				if parent.has_space():
-					_set_prompt(col, "[E]  Place tape on shelf")
-				else:
-					_set_prompt(null, "Shelf is full")
-			else:
-				_set_prompt(col, "[E]  Move shelf")
-		elif col.is_in_group("counter"):
-			var cust: Node = GameManager.active_customer
-			if cust != null and cust.has_method("is_waiting_at_counter") and cust.is_waiting_at_counter():
-				_set_prompt(col, "[E]  Complete rental")
-			elif not carry.is_empty():
-				_set_prompt(col, "[E]  Set tape on counter")
-		elif col.is_in_group("rewind_machine") and not carry.is_empty():
-			_set_prompt(col, "[E]  Rewind tapes")
+func _update_sway(delta: float) -> void:
+	_mouse_delta    = _mouse_delta.lerp(Vector2.ZERO, 10.0 * delta)
+	cam_node.rotation.z = lerp(cam_node.rotation.z, -_mouse_delta.x * 0.0006, 8.0 * delta)
 
-func _set_prompt(interactable: Node, text: String) -> void:
-	_cur_interactable = interactable
-	_cur_prompt       = text
-	_update_ui_prompt(text)
+func _tick_footstep(delta: float) -> void:
+	var h_spd := Vector2(velocity.x, velocity.z).length()
+	if h_spd < 0.3 or not is_on_floor():
+		_step_accum = 0.0
+		return
+	var interval := 0.35 if h_spd > walk_speed + 0.5 else 0.55
+	_step_accum += delta
+	if _step_accum >= interval:
+		_step_accum = 0.0
+		GameManager.on_player_footstep(global_position, h_spd > walk_speed + 0.5)
 
-func _update_ui_prompt(text: String) -> void:
-	var ui := get_tree().get_first_node_in_group("ui")
-	if ui and ui.has_method("set_prompt"):
-		ui.set_prompt(text)
-
-# ── Perform interaction ───────────────────────────────────────────────────────
-func _do_interact(col: Node) -> void:
-	if col.is_in_group("tape") and not carry.is_full():
-		carry.add_tape(col)
-		col.on_picked_up()
+func die() -> void:
+	if _dead:
 		return
-	if not (col is Area3D):
-		return
-	var parent: Node = col.get_parent()
-	if parent != null and parent.is_in_group("shelf"):
-		if not carry.is_empty():
-			var tape: Node = carry.pop_first()
-			if not parent.add_tape(tape):
-				carry.add_tape(tape)  # return tape if shelf is full
-		else:
-			placement.start(parent)
-		return
-	if col.is_in_group("counter"):
-		var cust: Node = GameManager.active_customer
-		if cust != null and cust.has_method("is_waiting_at_counter") and cust.is_waiting_at_counter():
-			GameManager.process_counter_rental(cust)
-		elif not carry.is_empty():
-			var tape: Node = carry.pop_first()
-			tape.on_dropped(col.global_position + Vector3(0.0, 0.5, 0.0))
-		return
-	if col.is_in_group("rewind_machine"):
-		_rewind_all()
-
-func _rewind_all() -> void:
-	for tape: Node in carry.get_tapes():
-		if tape.has_method("rewind"):
-			tape.rewind()
+	_dead    = true
+	velocity = Vector3.ZERO
+	GameManager.on_player_died()
